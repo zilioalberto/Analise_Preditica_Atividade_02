@@ -1,200 +1,237 @@
-# === Cria o Markdown e baixa no navegador ===
-from google.colab import files
 
-content = """Classificador_KNN  
-Classificador KNN - Machine Learrning Prof. Claudinei
+# Atividade 02 — Banco de Dados NoSQL com MongoDB
 
-Alunos: Alberto Zilio / Roni Pereira
+## Disciplina
+Banco de Dados / Big Data
 
-Vamos utilizar o dataset presente no link:  
+
+##Alunos:
+- Alberto Zilio
+- Roni Pereira
+
+## Objetivo da Atividade
+O objetivo desta atividade é demonstrar o uso de um banco de dados **NoSQL**, realizando:
+
+- Importação de uma base de dados com mais de 500 registros
+- Inserção dos dados em um banco NoSQL
+- Execução de consultas sobre os dados
+
+---
+
+# Base de Dados Utilizada
+
+Dataset escolhido:
+
+**Automobile Dataset**
+
+Fonte oficial:
 https://archive.ics.uci.edu/dataset/10/automobile
 
-# Relatório do Projeto — **KNN (k-Nearest Neighbors)**
+Este dataset contém informações sobre automóveis, incluindo:
 
-## Sumário
-- [Objetivo](#objetivo)
-- [Descrição do Dataset](#descrição-do-dataset)
-- [Pipeline Geral (Resumo)](#pipeline-geral-resumo)
-- [Preparação dos Dados](#preparação-dos-dados)
-  - [Leitura e Padronização](#leitura-e-padronização)
-  - [Tratamento de Nulos e Duplicatas](#tratamento-de-nulos-e-duplicatas)
-  - [Verificações de Consistência](#verificações-de-consistência)
-- [Modelagem KNN](#modelagem-knn)
-  - [Codificação/Normalização](#codificaçãonormalização)
-  - [Divisão Treino/Teste (70/30)](#divisão-treinoTeste-7030)
-  - [KNN Regressor vs Classifier](#knn-regressor-vs-classifier)
-- [Avaliação (Baseline)](#avaliação-baseline)
-  - [Métricas](#métricas)
-  - [Gráficos e Interpretação](#gráficos-e-interpretação)
-- [Otimização (GridSearchCV)](#otimização-gridsearchcv)
-  - [Espaço de Busca](#espaço-de-busca)
-  - [Melhores Parâmetros Encontrados](#melhores-parâmetros-encontrados)
-  - [Resultados de Validação Cruzada e Teste](#resultados-de-validação-cruzada-e-teste)
-  - [Gráfico do Melhor Modelo (Teste)](#gráfico-do-melhor-modelo-teste)
-- [Conclusões e Próximos Passos](#conclusões-e-próximos-passos)
-- [Reprodutibilidade](#reprodutibilidade)
+- fabricante (make)
+- tipo de combustível
+- número de cilindros
+- tamanho do motor
+- consumo
+- preço
+- dimensões do veículo
+
+A base possui aproximadamente **205 registros** e **26 atributos**.
 
 ---
 
-## Objetivo
-Construir um fluxo completo de **aprendizado supervisionado** usando **KNN** sobre o dataset **Automobile (UCI)** para **prever o preço do veículo** (`price`) — tarefa de **regressão**. O objetivo é **maximizar o coeficiente de determinação (R²)** e **minimizar o erro médio (RMSE)**, mantendo o processo claro e reproduzível.
+# Ambiente Utilizado
 
-## Descrição do Dataset
-- **Fonte:** UCI Machine Learning Repository – Automobile  
-- **Tamanho:** 205 instâncias (linhas)  
-- **Atributos:** variáveis **numéricas** (ex.: `horsepower`, `engine_size`, `length`) e **categóricas** (ex.: `make`, `fuel_type`, `body_style`).  
-- **Faltantes:** existem valores ausentes (originalmente marcados com `?`).
+O desenvolvimento foi realizado utilizando:
 
-## Pipeline Geral (Resumo)
-1. **Leitura e Padronização de Colunas** (snake_case).
-2. **Tratamento de dados faltantes** (mediana para numéricos, moda para categóricos).
-3. **Conversões específicas** (ex.: `num_of_cylinders` textual → numérico).
-4. **Remoção de duplicatas**.
-5. **Separação X/y, split 70/30**.
-6. **Pré-processamento**: `StandardScaler` (ou `RobustScaler`) para numéricos + `OneHotEncoder` para categóricos.
-7. **Treino e avaliação** com KNN Regressor.
-8. **Otimização** com `GridSearchCV` (cv=5).
-9. **Gráficos** explicativos (dispersão y_real vs y_pred, resíduos).
+- **Google Colab**
+- **Python**
+- **MongoDB Atlas (Cloud)**
+- Biblioteca **PyMongo**
+
+Ferramentas utilizadas:
+
+| Ferramenta | Função |
+|--------|--------|
+Google Colab | Ambiente de execução Python |
+MongoDB Atlas | Banco NoSQL em nuvem |
+PyMongo | Driver de conexão com MongoDB |
+Pandas | Manipulação e tratamento dos dados |
 
 ---
 
-## Preparação dos Dados
+# Modelo NoSQL Escolhido
 
-### Leitura e Padronização
-- Arquivos utilizados no Colab: `imports-85.data` + `imports-85.names`.
-- Colunas renomeadas para **snake_case** (`normalized_losses`, `engine_size`, `body_style`, etc.).
-- Conversão de `num_of_cylinders` (texto: *four, six, eight* …) para coluna numérica auxiliar `num_of_cylinders_num`.
+O modelo NoSQL utilizado foi:
 
-### Tratamento de Nulos e Duplicatas
-- **Valores faltantes (`?`)** tratados como `NaN` e imputados:
-  - **Numéricos:** mediana.
-  - **Categóricos:** moda.
-- **Duplicatas:** removidas (nenhuma duplicata no final).
-- **Checagem de esparsidade:** colunas com pouquíssimos dados válidos seriam descartadas (limiar 60%), mas mantivemos as principais.
+**Banco de Dados Orientado a Documentos**
 
-### Verificações de Consistência
-- **Total final de linhas:** 205 (como o original).
-- **Nulos restantes:** 0 (após imputação).
-- **Tipos coerentes:** numéricos devidamente convertidos; categóricos preservados para `OneHotEncoder`.
+Tecnologia:
+
+**MongoDB**
+
+Neste modelo os dados são armazenados como **documentos JSON**, permitindo:
+
+- estrutura flexível
+- armazenamento sem esquema fixo
+- facilidade para consultas e agregações
 
 ---
 
-## Modelagem KNN
+# Etapas do Projeto
 
-### Codificação/Normalização
-- **Numéricos:** escalonamento com `StandardScaler` (e também testamos `RobustScaler` na otimização).
-- **Categóricos:** `OneHotEncoder(handle_unknown='ignore')`, para expandir categorias em variáveis binárias.
+## 1 — Download dos dados
 
-### Divisão Treino/Teste (70/30)
-- **Treino:** 70%  
-- **Teste:** 30%  
-- **`random_state=42`** para reprodutibilidade.
+Os arquivos do dataset foram armazenados em um repositório GitHub e baixados automaticamente pelo notebook utilizando a API do GitHub.
 
-### KNN Regressor vs Classifier
-- Como o alvo é **`price`** (numérico), usamos **KNeighborsRegressor**.
-- (Se quiséssemos **acurácia** em classificação, poderíamos trocar o alvo para uma coluna categórica — ou *binning* do `price`.)
+Exemplo de código utilizado:
 
----
+```python
+api_url = f"https://api.github.com/repos/{OWNER}/{REPO}/contents/{quote(FOLDER)}?ref={BRANCH}"
+```
 
-## Avaliação (Baseline)
-
-### Métricas
-No primeiro pipeline (sem tuning), números esperados (podem variar levemente dependendo da partição):
-- **R² (teste):** ~0,84  
-- **RMSE (teste):** ~3.2k
-
-> *Interpretação:*  
-> - **R²** próximo de 1 indica que o modelo explica boa parte da variabilidade do preço.  
-> - **RMSE** (~3.200) é o erro médio em unidades de **preço**, portanto interpretável no contexto monetário.
-
-### Gráficos e Interpretação
-> Estes gráficos são gerados pelo bloco de avaliação do pipeline (seção de regressão).
-
-1) **Dispersão — `y_real` vs `y_pred`**  
-   - **O que ver:** pontos próximos da linha tracejada `y=x` indicam boa previsão.  
-   - **Como ler:** se muitos pontos estiverem **abaixo** da linha, o modelo está **superestimando**; se estiverem **acima**, **subestimando**.
-
-2) **Histograma dos Resíduos (`y_real - y_pred`)**  
-   - **O que ver:** distribuição **simétrica** e **centrada em zero** é desejável.  
-   - **Como ler:** caudas longas/outliers podem indicar **pontos difíceis** ou **não linearidades**.
-
-3) **Resíduos vs Predição**  
-   - **O que ver:** um “ruído” homogêneo ao redor de 0 (sem padrão) sugere **homocedasticidade**.  
-   - **Como ler:** padrões (ex.: funil) indicam heterocedasticidade — o erro cresce/decresce com o valor previsto.
+Os arquivos são então salvos localmente no ambiente do Colab.
 
 ---
 
-## Otimização (GridSearchCV)
+# 2 — Carregamento e preparação da base
 
-### Espaço de Busca
-- **Escalonamento (numéricos):** `StandardScaler` **e** `RobustScaler`.  
-- **KNN:**  
-  - `n_neighbors` ∈ {3, 5, 7, 9, 11, 15, 21}  
-  - `weights` ∈ {`uniform`, `distance`}  
-  - `metric` = `minkowski` com `p` ∈ {1 (Manhattan), 2 (Euclidiana)}  
-  - `algorithm` = `auto` (mais estável)
-  - `leaf_size` ∈ {20, 30, 40}
-- **Scorers (CV):** `r2` e `neg_root_mean_squared_error` (RMSE).
+Os dados foram carregados utilizando a biblioteca **Pandas**.
 
-### Melhores Parâmetros Encontrados
-> Com base em execução representativa (alvo original, sem log1p):
+```python
+df = pd.read_csv("/content/data/automobile/imports-85.data")
+```
 
-- **Pré-processamento:** `StandardScaler`  
-- **`n_neighbors`:** **7**  
-- **`weights`:** **distance**  
-- **`p`:** **1** (distância de Manhattan)  
-- **`metric`:** `minkowski`  
-- **`algorithm`:** `auto`  
-- **`leaf_size`:** 20  
+Durante o tratamento foram realizadas as seguintes operações:
 
-> *Esses parâmetros foram obtidos como “melhores” com **refit por R²**.*
-
-### Resultados de Validação Cruzada e Teste
-- **CV (k=5):**  
-  - **Melhor R² (CV):** ~**0,786**  
-  - **Melhor RMSE (CV):** ~**3444**
-- **Teste 70/30 (modelo escolhido pelo CV):**  
-  - **R² (teste):** ~**0,847**  
-  - **RMSE (teste):** ~**3241**
-
-> *Interpretação:*  
-> O modelo generaliza bem do CV para o conjunto de teste (R² aumenta levemente e RMSE cai). `weights='distance'` e `p=1` (Manhattan) costumam beneficiar KNN quando existem outliers e/ou quando a escala das features já está normalizada.
-
-### Gráfico do Melhor Modelo (Teste)
-> Gerado pela célula “**KNN Regressão — GridSearchCV + Seleção do melhor + Gráfico**”.
-
-**Dispersão `y_real` vs `y_pred` (MELHOR MODELO)**  
-- **Leitura:** a **proximidade dos pontos** à linha `y=x` confirma a boa aderência do modelo.  
-- **Anotações no título:** exibimos **R² (teste)** e **RMSE (teste)** para contextualizar a performance.  
-- **Padrões a notar:**  
-  - Se houver “abanico” (maior dispersão para preços altos), pode indicar **heterocedasticidade**;  
-  - Alguns outliers são esperados (carros de luxo, motores muito potentes).
+- remoção de caracteres inválidos
+- conversão de nomes de colunas para **snake_case**
+- substituição de valores ausentes
+- conversão de tipos numéricos
 
 ---
 
-## Conclusões e Próximos Passos
-- O KNN, após tuning, atingiu **R² ~0,85** e **RMSE ~3,2k** no teste — **resultado sólido** para o dataset Automobile.  
-- **Pontos fortes:** pipeline claro, tratamento de dados consistente, pré-processamento adequado e busca sistemática de hiperparâmetros.  
-- **Oportunidades de melhoria:**
-  1. **Engenharia de Atributos:** criar razões (ex.: `power_to_weight = horsepower / curb_weight`), interações ou *bins* de idade/porte do veículo.  
-  2. **Tratamento de outliers:** `RobustScaler` já ajuda; poderíamos avaliar podas (winsorization) controladas.  
-  3. **Modelos de comparação:** Regressão Linear regularizada (Ridge/Lasso), Árvores/Random Forest, Gradient Boosting (XGB/LightGBM).  
-  4. **Validação adicional:** **repetir CV** com diferentes `random_state`/partições.  
+# 3 — Conexão com MongoDB Atlas
+
+Foi criado um cluster gratuito no **MongoDB Atlas**.
+
+A conexão foi realizada utilizando **PyMongo**.
+
+Exemplo:
+
+```python
+from pymongo import MongoClient
+client = MongoClient(uri)
+```
+
+O banco utilizado foi:
+
+```
+atividade_nosql
+```
+
+Coleção criada:
+
+```
+automobile
+```
 
 ---
 
-## Reprodutibilidade
-- **Ambiente:** Google Colab.  
-- **Sementes:** `random_state=42` na divisão treino/teste e no KFold do `GridSearchCV`.  
-- **Divisão:** 70% treino / 30% teste.  
-- **Código principal incluído no notebook:**  
-  - *Limpeza & CSV limpo:* `automobile_clean.csv`  
-  - *Pipeline baseline:* split 70/30 + scaler/one-hot + KNN  
-  - *Otimização:* `GridSearchCV` (cv=5) com *scorers* `r2` e `neg_root_mean_squared_error`  
-  - *Seleção do melhor* e *gráfico final* `y_real vs y_pred`.
+# 4 — Inserção dos dados no MongoDB
 
-> **Observação**: os gráficos exibidos no Colab (dispersões e resíduos) foram **explicados** nas seções de avaliação. Ao rodar as células, eles são renderizados logo após as métrricas, facilitando a leitura e a inclusão de **prints** no relatório final.
+O DataFrame foi convertido em documentos JSON.
+
+```python
+records = df.to_dict("records")
+collection.insert_many(records)
+```
+
+Cada linha do dataset se tornou um documento no MongoDB.
+
+Exemplo de documento:
+
+```json
+{
+  "make": "toyota",
+  "fuel_type": "gas",
+  "engine_size": 130,
+  "horsepower": 111,
+  "price": 16500
+}
+```
 
 ---
 
+# 5 — Consultas no Banco de Dados
 
+Foram realizadas consultas utilizando o modelo de consulta do MongoDB.
+
+## Consulta 1 — Carros da marca Toyota
+
+```python
+collection.find({"make":"toyota"})
+```
+
+---
+
+## Consulta 2 — Carros com preço maior que 15000
+
+```python
+collection.find({"price":{"$gt":15000}})
+```
+
+---
+
+## Consulta 3 — Quantidade de carros por fabricante
+
+```python
+pipeline = [
+ {"$group":{"_id":"$make","quantidade":{"$sum":1}}},
+ {"$sort":{"quantidade":-1}}
+]
+```
+
+---
+
+## Consulta 4 — Média de preço por tipo de carroceria
+
+```python
+pipeline = [
+ {"$group":{"_id":"$body_style","media_preco":{"$avg":"$price"}}}
+]
+```
+
+---
+
+# Estrutura do Banco
+
+```
+Cluster0
+ └── atividade_nosql
+      └── automobile
+           ├── documento JSON
+           ├── documento JSON
+           ├── documento JSON
+```
+
+Cada documento representa um veículo.
+
+---
+
+# Conclusão
+
+O uso do banco de dados **MongoDB** permitiu armazenar os dados do dataset de forma flexível utilizando documentos JSON.
+
+O modelo **NoSQL orientado a documentos** mostrou-se adequado para esse tipo de aplicação, permitindo consultas eficientes e agregações estatísticas sobre os dados.
+
+A integração entre **Python, Pandas e MongoDB** facilitou o processo de ingestão e análise dos dados.
+
+---
+
+# Autor
+
+Aluno: **Alberto Zilio**
+
+Projeto desenvolvido para fins acadêmicos.
